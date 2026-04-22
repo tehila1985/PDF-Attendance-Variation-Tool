@@ -1,0 +1,90 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Attendance Report Lab</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='styles.css') }}">
+</head>
+<body>
+    <main class="shell">
+        <section class="hero-card">
+            <p class="eyebrow">PDF Variation Studio</p>
+            <h1>העלה דוח נוכחות וקבל וריאציה חדשה</h1>
+            <p class="lede">
+                הממשק הזה מפעיל את אותו מנוע עיבוד של הפרויקט: זיהוי סוג הדוח, חילוץ נתונים, החלת שינויים
+                דטרמיניסטיים והפקת PDF חדש.
+            </p>
+
+            <form class="upload-panel" method="post" enctype="multipart/form-data">
+                <div class="dropzone">
+                    <span class="dropzone-title">בחר קובץ PDF לעיבוד</span>
+                    <span class="dropzone-hint">קובץ אחד בכל הרצה, עד 16MB</span>
+                    <input id="report_file" name="report_file" class="file-input" type="file" accept="application/pdf,.pdf" required>
+                </div>
+                <button type="submit" class="primary-button">עבד קובץ</button>
+            </form>
+
+            {% if error %}
+                <div class="message error">{{ error }}</div>
+            {% endif %}
+
+            {% if success %}
+                <div class="message success">{{ success }}</div>
+            {% endif %}
+        </section>
+
+        <section class="info-grid">
+            <article class="info-card accent-a">
+                <h2>מה קורה מאחורי הקלעים</h2>
+                <p>השרת מזהה אם זה דוח סוג א או סוג ב, מחלץ שורות עבודה בעזרת OCR, מתקן חלונות זמן לא אמינים ומחשב מחדש שעות וסכומים.</p>
+            </article>
+            <article class="info-card accent-b">
+                <h2>הפלט</h2>
+                <p>נבנה PDF חדש באותו סגנון מבני של הסוג הרלוונטי, בלי תלות בתיקיית input_files ובלי רשימת קבצים קשיחה.</p>
+            </article>
+        </section>
+
+        {% if summary %}
+            <section class="result-card">
+                <div class="result-head">
+                    <div>
+                        <p class="result-label">קובץ שעובד</p>
+                        <h2>{{ original_name }}</h2>
+                    </div>
+                    <a class="download-button" href="{{ download_url }}">הורדת ה־PDF החדש</a>
+                </div>
+
+                <div class="stats-grid">
+                    <div class="stat-pill">
+                        <span>סוג דוח</span>
+                        <strong>{{ summary.report_type }}</strong>
+                    </div>
+                    <div class="stat-pill">
+                        <span>חודש</span>
+                        <strong>{{ summary.month_year }}</strong>
+                    </div>
+                    <div class="stat-pill">
+                        <span>מספר שורות</span>
+                        <strong>{{ summary.row_count }}</strong>
+                    </div>
+                    <div class="stat-pill">
+                        <span>סה״כ שעות</span>
+                        <strong>{{ summary.total_monthly_hours }}</strong>
+                    </div>
+                    {% if summary.total_payment is not none %}
+                    <div class="stat-pill">
+                        <span>סה״כ לתשלום</span>
+                        <strong>{{ summary.total_payment }}</strong>
+                    </div>
+                    {% endif %}
+                    <div class="stat-pill">
+                        <span>עובד</span>
+                        <strong>{{ summary.employee_name }}</strong>
+                    </div>
+                </div>
+            </section>
+        {% endif %}
+    </main>
+</body>
+</html>
