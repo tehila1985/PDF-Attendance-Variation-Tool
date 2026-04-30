@@ -4,33 +4,23 @@ import copy
 import hashlib
 import logging
 import random
+from typing import Protocol
 
 from core.entities import AttendanceReport, AttendanceRow, ReportType
 from interfaces.strategy import BaseTransformationStrategy
 from services.decorators import TransformationError
 
 
+class StrategyFactory(Protocol):
+    def get_strategy(self, report_type: ReportType) -> BaseTransformationStrategy:
+        ...
+
+
 class TransformationService:
-    """Deterministic transformation service driven by a strategy Registry.
+    """Deterministic transformation service that resolves strategies via a factory."""
 
-    The Registry maps each ReportType to a strategy object.  The service
-    iterates rows, builds a per-row RNG from the global seed, and delegates
-    transformation to whichever strategy the Registry provides — without
-    knowing the concrete type.
-
-    If the selected strategy is wrapped in a ``ValidatingStrategyDecorator``
-    and raises a ``TransformationError``, the service logs the failure and
-    keeps the original row (graceful degradation).
-
-    Registry
-    --------
-    Pass a ``dict[ReportType, BaseTransformationStrategy]`` at construction.
-    This allows callers (main.py) to wire the Registry with decorated or bare
-    strategies without changing service code.
-    """
-
-    def __init__(self, registry: dict[ReportType, BaseTransformationStrategy]) -> None:
-        self._registry = registry
+    def __init__(self, strategy_factory: StrategyFactory) -> None:
+        self._strategy_factory = strategy_factory
 
     def apply(self, report: AttendanceReport, seed: int | str) -> AttendanceReport:
         """Apply deterministic transformations; return a new modified report."""
@@ -52,19 +42,7 @@ class TransformationService:
         return varied_report
 
     def _resolve_strategy(self, report_type: ReportType) -> BaseTransformationStrategy:
-        strategy = self._registry.get(report_type)
-        if strategy is not None:
-            return strategy
-        fallback = self._registry.get(ReportType.TYPE_A)
-        if fallback is not None:
-            logging.warning(
-                "No strategy registered for %s; falling back to TYPE_A strategy.",
-                report_type.value,
-            )
-            return fallback
-        raise ValueError(
-            f"No strategy for {report_type.value} and no TYPE_A fallback in registry."
-        )
+        return self._strategy_factory.get_strategy(report_type)
 
     @staticmethod
     def _build_rng(seed: int | str, row: AttendanceRow, index: int) -> random.Random:

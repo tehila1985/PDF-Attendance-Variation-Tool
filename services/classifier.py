@@ -10,6 +10,8 @@ _TYPE_A_HEADER_PATTERN = re.compile(r"שעת\s+כניסה\s*[:\-]?\s*שעת\s+י
 _TYPE_B_PERCENT_PATTERN = re.compile(r"(?:%\s*100|100\s*%|%\s*125|125\s*%|%\s*150|150\s*%)")
 _NUMERIC_TOKEN_PATTERN = re.compile(r"\b\d+(?:[.,]\d+)?%?\b")
 _DECIMAL_VALUE_PATTERN = re.compile(r"\b\d{1,2}[.,]\d{1,2}\b")
+_HEADER_WEIGHT = 10
+_UNCERTAINTY_MARGIN = 1.5
 
 
 @dataclass(slots=True)
@@ -26,24 +28,20 @@ class KeywordLayoutClassifier:
     def classify(self, ocr_result: OCRResult) -> ReportType:
         lines = self._get_candidate_lines(ocr_result.full_text)
         header_line = self._extract_header_line(lines)
+
         header_type = self._classify_header_line(header_line) if header_line else ReportType.UNKNOWN
         if header_type != ReportType.UNKNOWN:
             return header_type
 
+        a_score, b_score = self._weighted_keyword_scores(lines, header_line)
+
         row_type = self._classify_by_row_structure(lines)
-        if row_type != ReportType.UNKNOWN:
-            return row_type
+        if row_type == ReportType.TYPE_A:
+            a_score += 3
+        elif row_type == ReportType.TYPE_B:
+            b_score += 3
 
-        text = ocr_result.full_text
-        a_score = self._score(text, self.type_a_keywords)
-        b_score = self._score(text, self.type_b_keywords)
-        # Secondary indicators contribute 0.5 each so they can break a tie
-        # but can't override a strong primary-keyword signal.
-        b_score += 0.5 * self._score(text, self.type_b_secondary)
-
-        if a_score == 0 and b_score == 0:
-            return ReportType.UNKNOWN
-        return ReportType.TYPE_A if a_score >= b_score else ReportType.TYPE_B
+        return self._resolve_by_scores(a_score, b_score)
 
     def infer_layout_metadata(self, report_type: ReportType, ocr_result: OCRResult) -> dict[str, object]:
         """Infer column order/headers for rendering the resulting PDF."""
@@ -80,6 +78,34 @@ class KeywordLayoutClassifier:
     def _score(text: str, keywords: tuple[str, ...]) -> int:
         lowered = text.lower()
         return sum(1 for keyword in keywords if keyword.lower() in lowered)
+
+    def _weighted_keyword_scores(self, lines: list[str], header_line: str | None) -> tuple[float, float]:
+        text = "\n".join(lines)
+        header_text = header_line or ""
+
+        a_score = (
+            _HEADER_WEIGHT * self._score(header_text, self.type_a_keywords)
+            + self._score(text, self.type_a_keywords)
+        )
+
+        b_primary = (
+            _HEADER_WEIGHT * self._score(header_text, self.type_b_keywords)
+            + self._score(text, self.type_b_keywords)
+        )
+        b_secondary = (
+            _HEADER_WEIGHT * self._score(header_text, self.type_b_secondary)
+            + self._score(text, self.type_b_secondary)
+        )
+        b_score = b_primary + (0.5 * b_secondary)
+        return float(a_score), float(b_score)
+
+    @staticmethod
+    def _resolve_by_scores(a_score: float, b_score: float) -> ReportType:
+        if a_score == 0 and b_score == 0:
+            return ReportType.UNKNOWN
+        if abs(a_score - b_score) < _UNCERTAINTY_MARGIN:
+            return ReportType.UNKNOWN
+        return ReportType.TYPE_A if a_score > b_score else ReportType.TYPE_B
 
     @staticmethod
     def _get_candidate_lines(text: str) -> list[str]:
