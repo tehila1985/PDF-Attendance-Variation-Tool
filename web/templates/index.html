@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>מערכת וריאציה לדוחות נוכחות</title>
+  <style>
+    /* ── Reset & base ────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "Segoe UI", Arial, sans-serif;
+      background: #f0f2f7;
+      color: #1e2432;
+      min-height: 100vh;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      padding: 2rem 1rem;
+    }
+
+    /* ── Card ────────────────────────────────────────────────── */
+    .card {
+      background: #fff;
+      border-radius: 16px;
+      box-shadow: 0 4px 24px rgba(0,0,0,.10);
+      padding: 2.5rem 2.5rem 2rem;
+      width: 100%;
+      max-width: 560px;
+    }
+
+    h1 {
+      font-size: 1.45rem;
+      font-weight: 700;
+      margin-bottom: .35rem;
+      color: #2c3e8c;
+    }
+    .subtitle {
+      font-size: .9rem;
+      color: #667;
+      margin-bottom: 1.8rem;
+    }
+
+    /* ── Drop-zone ───────────────────────────────────────────── */
+    .drop-zone {
+      border: 2.5px dashed #b0b8d8;
+      border-radius: 12px;
+      padding: 2.2rem 1rem;
+      text-align: center;
+      cursor: pointer;
+      transition: background .2s, border-color .2s;
+      position: relative;
+    }
+    .drop-zone:hover, .drop-zone.drag-over {
+      background: #eef1ff;
+      border-color: #4a5fc1;
+    }
+    .drop-zone input[type="file"] {
+      position: absolute; inset: 0; opacity: 0; cursor: pointer;
+    }
+    .drop-zone .icon { font-size: 2.5rem; margin-bottom: .5rem; }
+    .drop-zone .hint { font-size: .85rem; color: #667; margin-top: .4rem; }
+    .drop-zone .chosen-file {
+      font-size: .9rem; font-weight: 600;
+      color: #2c3e8c; margin-top: .5rem;
+    }
+
+    /* ── Options grid ────────────────────────────────────────── */
+    .options {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: .9rem 1.2rem;
+      margin: 1.4rem 0;
+    }
+    .field label {
+      display: block;
+      font-size: .8rem;
+      font-weight: 600;
+      color: #445;
+      margin-bottom: .3rem;
+    }
+    .field input, .field select {
+      width: 100%;
+      padding: .45rem .7rem;
+      border: 1.5px solid #d0d5e8;
+      border-radius: 8px;
+      font-size: .9rem;
+      outline: none;
+      transition: border-color .2s;
+    }
+    .field input:focus, .field select:focus { border-color: #4a5fc1; }
+    .field.full { grid-column: 1 / -1; }
+
+    /* ── Button ──────────────────────────────────────────────── */
+    .btn-process {
+      width: 100%;
+      padding: .75rem;
+      background: #2c3e8c;
+      color: #fff;
+      border: none;
+      border-radius: 10px;
+      font-size: 1rem;
+      font-weight: 700;
+      cursor: pointer;
+      transition: background .2s, transform .1s;
+    }
+    .btn-process:hover:not(:disabled) { background: #3d52b5; }
+    .btn-process:active:not(:disabled) { transform: scale(.98); }
+    .btn-process:disabled { background: #9aa; cursor: not-allowed; }
+
+    /* ── Progress bar ────────────────────────────────────────── */
+    .progress-wrap {
+      margin-top: 1.2rem;
+      display: none;
+    }
+    .progress-wrap.visible { display: block; }
+    .progress-bar-bg {
+      background: #e4e8f5;
+      border-radius: 99px;
+      height: 10px;
+      overflow: hidden;
+    }
+    .progress-bar-fill {
+      height: 100%;
+      background: linear-gradient(90deg, #4a5fc1, #7a8ce8);
+      border-radius: 99px;
+      width: 0%;
+      transition: width .4s ease;
+    }
+    .progress-label {
+      font-size: .8rem;
+      color: #667;
+      margin-top: .4rem;
+      text-align: center;
+    }
+
+    /* ── Result ──────────────────────────────────────────────── */
+    .result-box {
+      margin-top: 1.3rem;
+      padding: 1rem 1.2rem;
+      border-radius: 10px;
+      font-size: .9rem;
+      display: none;
+    }
+    .result-box.visible { display: block; }
+    .result-box.success {
+      background: #eafaf2;
+      border: 1.5px solid #52c78b;
+      color: #1b6e45;
+    }
+    .result-box.error {
+      background: #fff2f2;
+      border: 1.5px solid #e07070;
+      color: #8b2020;
+    }
+    .result-box a {
+      display: inline-block;
+      margin-top: .6rem;
+      background: #2c3e8c;
+      color: #fff;
+      padding: .45rem 1.1rem;
+      border-radius: 8px;
+      text-decoration: none;
+      font-weight: 700;
+      font-size: .9rem;
+    }
+    .result-box a:hover { background: #3d52b5; }
+  </style>
+</head>
+<body>
+
+<div class="card">
+  <h1>מערכת וריאציה לדוחות נוכחות</h1>
+  <p class="subtitle">העלה קובץ PDF של דוח נוכחות וקבל גרסה וריאנטית אוטומטית</p>
+
+  <!-- Drop zone -->
+  <div class="drop-zone" id="dropZone">
+    <input type="file" id="fileInput" accept=".pdf" />
+    <div class="icon">📂</div>
+    <div>גרור לכאן קובץ PDF או לחץ לבחירה</div>
+    <div class="hint">PDF בלבד · עד 20 MB</div>
+    <div class="chosen-file" id="chosenFile"></div>
+  </div>
+
+  <!-- Options -->
+  <div class="options">
+    <div class="field">
+      <label for="seedInput">Seed (ערך קבוע)</label>
+      <input id="seedInput" type="text" value="42" placeholder="42" />
+    </div>
+
+    <div class="field">
+      <label for="formatSelect">פורמט פלט</label>
+      <select id="formatSelect">
+        <option value="pdf">PDF</option>
+        <option value="html">HTML</option>
+      </select>
+    </div>
+
+    <div class="field">
+      <label for="ocrLangInput">שפת OCR</label>
+      <input id="ocrLangInput" type="text" value="heb+eng" placeholder="heb+eng" />
+    </div>
+
+    <div class="field">
+      <label for="tesseractInput">נתיב Tesseract (אופציונלי)</label>
+      <input id="tesseractInput" type="text" placeholder='C:\Program Files\Tesseract-OCR\tesseract.exe' />
+    </div>
+  </div>
+
+  <button class="btn-process" id="processBtn" disabled>עיבוד הדוח</button>
+
+  <!-- Progress -->
+  <div class="progress-wrap" id="progressWrap">
+    <div class="progress-bar-bg"><div class="progress-bar-fill" id="progressFill"></div></div>
+    <div class="progress-label" id="progressLabel">מעבד...</div>
+  </div>
+
+  <!-- Result -->
+  <div class="result-box" id="resultBox"></div>
+</div>
+
+<script>
+  const dropZone    = document.getElementById('dropZone');
+  const fileInput   = document.getElementById('fileInput');
+  const chosenFile  = document.getElementById('chosenFile');
+  const processBtn  = document.getElementById('processBtn');
+  const progressWrap = document.getElementById('progressWrap');
+  const progressFill = document.getElementById('progressFill');
+  const progressLabel = document.getElementById('progressLabel');
+  const resultBox   = document.getElementById('resultBox');
+
+  // ── File selection ──────────────────────────────────────────────────────
+
+  fileInput.addEventListener('change', () => {
+    const f = fileInput.files[0];
+    if (f) {
+      chosenFile.textContent = f.name;
+      processBtn.disabled = false;
+    }
+  });
+
+  // Drag & drop
+  dropZone.addEventListener('dragover', e => { e.preventDefault(); dropZone.classList.add('drag-over'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('drag-over'));
+  dropZone.addEventListener('drop', e => {
+    e.preventDefault();
+    dropZone.classList.remove('drag-over');
+    const f = e.dataTransfer.files[0];
+    if (f && f.name.toLowerCase().endsWith('.pdf')) {
+      // Assign to input via DataTransfer
+      const dt = new DataTransfer();
+      dt.items.add(f);
+      fileInput.files = dt.files;
+      chosenFile.textContent = f.name;
+      processBtn.disabled = false;
+    }
+  });
+
+  // ── Process ─────────────────────────────────────────────────────────────
+
+  processBtn.addEventListener('click', async () => {
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    // Reset UI
+    resultBox.className = 'result-box';
+    resultBox.innerHTML = '';
+    progressWrap.classList.add('visible');
+    setProgress(10, 'שולח קובץ...');
+    processBtn.disabled = true;
+
+    const body = new FormData();
+    body.append('file', file);
+    body.append('seed',      document.getElementById('seedInput').value || '42');
+    body.append('ocr_lang',  document.getElementById('ocrLangInput').value || 'heb+eng');
+    body.append('format',    document.getElementById('formatSelect').value);
+    const tess = document.getElementById('tesseractInput').value.trim();
+    if (tess) body.append('tesseract', tess);
+
+    setProgress(30, 'מבצע OCR ועיבוד...');
+
+    try {
+      const res  = await fetch('/api/process', { method: 'POST', body });
+      setProgress(85, 'מסיים...');
+      const data = await res.json();
+
+      if (data.ok) {
+        setProgress(100, 'הושלם!');
+        showResult('success',
+          `✅ הדוח עובד בהצלחה: <strong>${data.filename}</strong>` +
+          `<br/><a href="${data.download_url}" download="${data.filename}">⬇ הורד את הקובץ</a>`
+        );
+      } else {
+        setProgress(100, 'שגיאה');
+        showResult('error', `❌ שגיאה: ${data.error || 'שגיאה לא ידועה'}`);
+      }
+    } catch (err) {
+      setProgress(100, 'שגיאה');
+      showResult('error', `❌ שגיאת תקשורת: ${err.message}`);
+    } finally {
+      processBtn.disabled = false;
+    }
+  });
+
+  function setProgress(pct, label) {
+    progressFill.style.width = pct + '%';
+    progressLabel.textContent = label;
+  }
+
+  function showResult(type, html) {
+    resultBox.className = `result-box ${type} visible`;
+    resultBox.innerHTML = html;
+  }
+</script>
+
+</body>
+</html>
