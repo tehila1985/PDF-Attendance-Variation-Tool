@@ -8,27 +8,19 @@ scripts keep working without modification.
 from __future__ import annotations
 
 from core.entities import ReportType
-from services.decorators import ValidatingStrategyDecorator
-from services.strategies import TypeATransformationStrategy, TypeBTransformationStrategy
+from services.factories import TransformationStrategyFactory
 from services.transformation_service import TransformationService
 
 
-def _default_registry():
-    return {
-        ReportType.TYPE_A: ValidatingStrategyDecorator(TypeATransformationStrategy()),
-        ReportType.TYPE_B: ValidatingStrategyDecorator(TypeBTransformationStrategy()),
-    }
+def _default_strategy_factory() -> TransformationStrategyFactory:
+    return TransformationStrategyFactory()
 
 
 class DeterministicVariationService(TransformationService):
-    """Convenience subclass with a pre-wired default Registry.
-
-    Equivalent to instantiating TransformationService with the standard
-    decorated strategies for TYPE_A and TYPE_B.
-    """
+    """Convenience subclass with a pre-wired default strategy factory."""
 
     def __init__(self) -> None:
-        super().__init__(registry=_default_registry())
+        super().__init__(strategy_factory=_default_strategy_factory())
 
 
 __all__ = ["DeterministicVariationService"]

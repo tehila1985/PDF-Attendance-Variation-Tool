@@ -18,21 +18,7 @@ from core.entities import ReportType
 from generators.html_renderer import HtmlRenderer
 from generators.pdf_generator import PdfRenderer
 from interfaces.renderer import BaseRenderer
-from interfaces.strategy import BaseTransformationStrategy
-from parsers.factory import ParserFactory
-from services.classifier import KeywordLayoutClassifier
-from services.decorators import ValidatingStrategyDecorator
-from services.ocr_service import TesseractPyMuPDFOCRService
-from services.strategies import TypeATransformationStrategy, TypeBTransformationStrategy
-from services.transformation_service import TransformationService
-
-# Re-use the same helpers from main.py
-from main import (
-    _infer_type_from_filename,
-    _infer_type_by_parser_success,
-    _parse_with_fallback,
-    build_registry,
-)
+from main import run_pipeline
 
 # ---------------------------------------------------------------------------
 # App setup
@@ -176,31 +162,15 @@ def _run_pipeline(
     tesseract_cmd: str | None,
     renderer: BaseRenderer,
 ) -> None:
-    source = Path(input_pdf)
-
-    ocr_service = TesseractPyMuPDFOCRService(ocr_lang=ocr_lang, tesseract_cmd=tesseract_cmd)
-    ocr_result = ocr_service.extract(str(source))
-
-    classifier = KeywordLayoutClassifier()
-    report_type = classifier.classify(ocr_result)
-    parser_factory = ParserFactory()
-
-    if report_type == ReportType.UNKNOWN:
-        report_type = _infer_type_from_filename(source.name)
-    if report_type == ReportType.UNKNOWN:
-        report_type = _infer_type_by_parser_success(ocr_result, parser_factory)
-    if report_type == ReportType.UNKNOWN:
-        raise ValueError("לא ניתן לזהות את סוג הדוח (A/B).")
-
-    ocr_result.metadata["layout_metadata"] = classifier.infer_layout_metadata(
-        report_type=report_type, ocr_result=ocr_result
-    )
-
-    report = _parse_with_fallback(ocr_result, parser_factory, report_type)
-    varied_report = TransformationService(registry=build_registry()).apply(report, seed)
-
     Path(output_path).parent.mkdir(parents=True, exist_ok=True)
-    renderer.render(report=varied_report, source_path=str(source), output_path=output_path)
+    run_pipeline(
+        input_pdf=input_pdf,
+        output_path=output_path,
+        seed=seed,
+        ocr_lang=ocr_lang,
+        tesseract_cmd=tesseract_cmd,
+        renderer=renderer,
+    )
 
 
 # ---------------------------------------------------------------------------
