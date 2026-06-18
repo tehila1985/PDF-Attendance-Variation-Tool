@@ -29,8 +29,7 @@ def _build_report() -> AttendanceReport:
         month="2026-04",
         rows=rows,
     )
-    report.recompute_monthly_total()
-    return report
+    return report.with_monthly_total()
 
 
 def test_deterministic_seed_produces_same_output() -> None:
@@ -80,3 +79,48 @@ def test_different_seeds_change_at_least_one_row() -> None:
     snapshot_2 = [(r.start_time, r.end_time) for r in varied_2.rows]
 
     assert snapshot_1 != snapshot_2
+
+
+def test_row_seed_depends_on_row_identity() -> None:
+    service = DeterministicVariationService()
+    report_a = _build_report()
+    report_b = AttendanceReport(
+        report_type=report_a.report_type,
+        employee_name=report_a.employee_name,
+        month=report_a.month,
+        rows=(
+            AttendanceRow(
+                date=report_a.rows[0].date,
+                day=report_a.rows[0].day,
+                start_time=report_a.rows[0].start_time,
+                end_time=report_a.rows[0].end_time,
+                total_hours=report_a.rows[0].total_hours,
+                location=report_a.rows[0].location,
+            ),
+            report_a.rows[1],
+        ),
+    ).with_monthly_total()
+
+    # Change only the first row date to verify seed depends on row identity.
+    report_c = AttendanceReport(
+        report_type=report_a.report_type,
+        employee_name=report_a.employee_name,
+        month=report_a.month,
+        rows=(
+            AttendanceRow(
+                date=report_a.rows[0].date.replace(day=2) if report_a.rows[0].date else None,
+                day=report_a.rows[0].day,
+                start_time=report_a.rows[0].start_time,
+                end_time=report_a.rows[0].end_time,
+                total_hours=report_a.rows[0].total_hours,
+                location=report_a.rows[0].location,
+            ),
+            report_a.rows[1],
+        ),
+    ).with_monthly_total()
+
+    varied_a = service.apply(report_a, seed=123)
+    varied_c = service.apply(report_c, seed=123)
+
+    assert varied_a.rows[0] != varied_c.rows[0]
+    assert varied_a.rows[1] == varied_c.rows[1]

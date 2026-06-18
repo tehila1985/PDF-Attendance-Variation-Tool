@@ -1,0 +1,38 @@
+[build-system]
+requires = ["setuptools>=68.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "attendance-report-variation-system"
+version = "0.1.0"
+description = "Deterministic attendance report variation pipeline for Hebrew attendance PDFs."
+readme = "README.md"
+requires-python = ">=3.12"
+authors = [{name = "Attendance Report Variation"}]
+keywords = ["attendance", "pdf", "ocr", "hebrew", "variation", "report"]
+classifiers = [
+  "Programming Language :: Python :: 3.12",
+  "License :: OSI Approved :: MIT License",
+  "Operating System :: OS Independent",
+]
+dependencies = [
+  "pymupdf>=1.24.0",
+  "pytesseract>=0.3.10",
+  "Pillow>=10.0.0",
+  "reportlab>=4.0.0",
+  "flask>=3.0.0",
+  "python-magic-bin>=0.4.14; sys_platform == 'win32'",
+  "python-magic>=0.4.27; sys_platform != 'win32'",
+]
+optional-dependencies = {dev = ["pytest>=8.0.0"]}
+
+[project.scripts]
+attendance-variation = "main:main"
+
+[tool.setuptools]
+include-package-data = true
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["core*", "generators*", "interfaces*", "parsers*", "services*", "web*"]
+exclude = ["tests*"]

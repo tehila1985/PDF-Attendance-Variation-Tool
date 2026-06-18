@@ -1,0 +1,10 @@
+__pycache__/
+*.py[cod]
+*.pyo
+.pytest_cache/
+*.egg-info/
+attendance_report_variation_system.egg-info/
+real_reports_output/
+*.log
+*.cache
+.DS_Store

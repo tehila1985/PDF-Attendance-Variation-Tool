@@ -6,7 +6,7 @@ Reads a scanned or digital attendance report, classifies it, parses it into stru
 ## Pipeline
 
 ```
-PDF input → OCR → Classify → Parse → Transform → Render → PDF / HTML output
+PDF input → OCR → Classify → Parse → Transform → Render → PDF / HTML / JSON output
 ```
 
 ## Supported Report Types
@@ -77,11 +77,17 @@ python main.py "input.pdf" "output.pdf" --tesseract-cmd "C:\Program Files\Tesser
 ## Usage
 
 ```powershell
+# Install the package locally
+python -m pip install -e .
+
 # PDF output (default)
 python main.py "input_report.pdf" "output_varied.pdf" --seed 42
 
 # HTML output
 python main.py "input_report.pdf" "output_varied.html" --output-format html
+
+# JSON output
+python main.py "input_report.pdf" "output_varied.json" --output-format json
 
 # Custom output directory (filename auto-generated)
 python main.py "input_report.pdf" -o "real_reports_output" --seed 42
